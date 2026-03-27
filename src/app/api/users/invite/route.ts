@@ -7,11 +7,10 @@ export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get('token');
   if (!token) return NextResponse.json({ error: 'Token required' }, { status: 400 });
 
-  const result = await getUserByInviteToken(token);
-  if (!result) return NextResponse.json({ error: 'Invalid token' }, { status: 404 });
+  const user = await getUserByInviteToken(token);
+  if (!user) return NextResponse.json({ error: 'Invalid token' }, { status: 404 });
 
-  const { user } = result;
-  if (new Date(user.inviteExpiry) < new Date()) {
+  if (user.inviteExpiry && new Date(user.inviteExpiry) < new Date()) {
     return NextResponse.json({ error: 'Token expired' }, { status: 410 });
   }
 
@@ -24,11 +23,10 @@ export async function POST(req: NextRequest) {
   if (!token || !password) return NextResponse.json({ error: 'token and password required' }, { status: 400 });
   if (password.length < 8) return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 });
 
-  const result = await getUserByInviteToken(token);
-  if (!result) return NextResponse.json({ error: 'Invalid token' }, { status: 404 });
+  const user = await getUserByInviteToken(token);
+  if (!user) return NextResponse.json({ error: 'Invalid token' }, { status: 404 });
 
-  const { user } = result;
-  if (new Date(user.inviteExpiry) < new Date()) {
+  if (user.inviteExpiry && new Date(user.inviteExpiry) < new Date()) {
     return NextResponse.json({ error: 'Token expired' }, { status: 410 });
   }
 

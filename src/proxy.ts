@@ -3,8 +3,9 @@ import { NextResponse } from 'next/server';
 import { Role } from './types';
 
 const ROLE_PROTECTED: Record<string, Role[]> = {
-  '/users':      ['Admin'],
-  '/reports':    ['Admin', 'SalesHead', 'VH'],
+  '/users':    ['Admin'],
+  '/reports':  ['Admin', 'SalesHead', 'VH'],
+  '/org':      ['Admin', 'SalesHead', 'VH'],
 };
 
 export default withAuth(
@@ -29,8 +30,11 @@ export default withAuth(
 export const config = {
   matcher: [
     '/dashboard/:path*',
+    '/metrics/:path*',
     '/targets/:path*',
     '/team/:path*',
+    '/deals/:path*',
+    '/org/:path*',
     '/users/:path*',
     '/incentives/:path*',
     '/reports/:path*',

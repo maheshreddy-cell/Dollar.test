@@ -1,110 +1,99 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { User, CommissionResult } from '@/types';
 import { ROLE_LABELS, ROLE_COLORS } from '@/lib/roles';
 import { formatCurrency } from '@/lib/incentives';
+import TopBar from '@/components/layout/TopBar';
 
-function ProgressBar({ pct }: { pct: number }) {
-  const capped = Math.min(pct, 100);
-  const color = pct >= 100 ? 'bg-green-500' : pct >= 75 ? 'bg-blue-500' : pct >= 50 ? 'bg-yellow-400' : 'bg-red-400';
-  return (
-    <div className="w-full bg-gray-100 rounded-full h-1.5">
-      <div className={`${color} h-1.5 rounded-full`} style={{ width: `${capped}%` }} />
-    </div>
-  );
-}
-
-interface MemberRow {
-  user: User;
-  commission?: CommissionResult;
-}
+interface MemberRow { user: User; commission?: CommissionResult }
 
 export default function TeamPage() {
+  const [period, setPeriod] = useState(new Date().toISOString().slice(0, 7));
   const [members, setMembers] = useState<MemberRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const period = new Date().toISOString().slice(0, 7);
 
-  useEffect(() => {
-    fetch('/api/users')
-      .then(r => r.json())
-      .then(async (users: User[]) => {
-        const rows: MemberRow[] = await Promise.all(
-          users.map(async (user) => {
-            const res = await fetch(`/api/commission?agentEmail=${encodeURIComponent(user.email)}&period=${period}`);
-            const commission = await res.json() as CommissionResult & { error?: string };
-            return { user, commission: commission.error ? undefined : commission as CommissionResult };
-          })
-        );
-        setMembers(rows);
-        setLoading(false);
-      });
+  const load = useCallback(async () => {
+    setLoading(true);
+    const users: User[] = await fetch('/api/users').then(r => r.json());
+    const rows: MemberRow[] = await Promise.all(
+      users.map(async user => {
+        const r = await fetch(`/api/commission?agentEmail=${encodeURIComponent(user.email)}&period=${period}`).then(x => x.json());
+        return { user, commission: r.error ? undefined : r as CommissionResult };
+      })
+    );
+    setMembers(rows);
+    setLoading(false);
   }, [period]);
 
-  return (
-    <div>
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">My Team</h2>
-        <p className="text-sm text-gray-500 mt-1">
-          {new Date().toLocaleString('default', { month: 'long', year: 'numeric' })} performance
-        </p>
-      </div>
+  useEffect(() => { load(); }, [load]);
 
-      {loading ? (
-        <div className="space-y-3">
-          {[1,2,3].map(i => <div key={i} className="bg-white rounded-xl border border-gray-200 p-5 h-24 animate-pulse" />)}
+  return (
+    <div className="flex flex-col flex-1 overflow-hidden">
+      <TopBar title="My Team" period={period} onPeriodChange={setPeriod} />
+      <main className="flex-1 overflow-y-auto p-6">
+        <div className="mb-6">
+          <h2 className="text-2xl font-semibold text-[#0F172A]">My Team</h2>
+          <p className="text-sm text-[#64748B] mt-1">Performance overview for {period}</p>
         </div>
-      ) : members.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-500">
-          No team members found.
-        </div>
-      ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="text-left px-5 py-3 text-gray-600 font-medium">Member</th>
-                <th className="text-left px-5 py-3 text-gray-600 font-medium">Role</th>
-                <th className="text-right px-5 py-3 text-gray-600 font-medium">Target</th>
-                <th className="text-right px-5 py-3 text-gray-600 font-medium">Achieved</th>
-                <th className="px-5 py-3 text-gray-600 font-medium w-32">Progress</th>
-                <th className="text-right px-5 py-3 text-gray-600 font-medium">Commission</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {members.map(({ user, commission }) => (
-                <tr key={user.email} className="hover:bg-gray-50">
-                  <td className="px-5 py-4">
-                    <p className="font-medium text-gray-900">{user.name}</p>
-                    <p className="text-xs text-gray-400">{user.email}</p>
-                  </td>
-                  <td className="px-5 py-4">
-                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${ROLE_COLORS[user.role]}`}>
-                      {ROLE_LABELS[user.role]}
-                    </span>
-                  </td>
-                  <td className="px-5 py-4 text-right text-gray-600">
-                    {commission?.revenueTarget ? formatCurrency(commission.revenueTarget) : '—'}
-                  </td>
-                  <td className="px-5 py-4 text-right text-gray-900 font-medium">
-                    {commission ? formatCurrency(commission.totalRevenue) : '—'}
-                  </td>
-                  <td className="px-5 py-4">
-                    {commission && commission.revenueTarget > 0 ? (
-                      <div>
-                        <ProgressBar pct={commission.achievementPct} />
-                        <p className="text-xs text-gray-400 mt-1 text-center">{commission.achievementPct}%</p>
-                      </div>
-                    ) : '—'}
-                  </td>
-                  <td className="px-5 py-4 text-right font-medium text-green-600">
-                    {commission?.commission ? formatCurrency(commission.commission) : '—'}
-                  </td>
+
+        {loading ? (
+          <div className="bg-white border border-[#E2E8F0] rounded-xl p-6 animate-pulse h-48" />
+        ) : members.length === 0 ? (
+          <div className="bg-white border border-[#E2E8F0] rounded-xl p-10 text-center text-[#94A3B8]">No team members found.</div>
+        ) : (
+          <div className="bg-white border border-[#E2E8F0] rounded-xl overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
+                  {['Member','Role','Target','Achieved','Progress','Commission'].map(h => (
+                    <th key={h} className={`px-5 py-3 text-[11px] font-semibold tracking-widest uppercase text-[#94A3B8] ${h === 'Progress' ? 'text-center w-36' : h === 'Member' || h === 'Role' ? 'text-left' : 'text-right'}`}>{h}</th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+              </thead>
+              <tbody className="divide-y divide-[#F1F5F9]">
+                {members.map(({ user, commission: c }) => {
+                  const pct = c?.achievementPct ?? 0;
+                  return (
+                    <tr key={user.email} className="hover:bg-[#F8FAFC] transition-colors">
+                      <td className="px-5 py-4">
+                        <p className="font-semibold text-[#0F172A]">{user.name}</p>
+                        <p className="text-xs text-[#94A3B8]">{user.email}</p>
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${ROLE_COLORS[user.role]}`}>
+                          {ROLE_LABELS[user.role]}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 text-right text-[#64748B]">
+                        {c?.revenueTarget ? formatCurrency(c.revenueTarget) : <span className="text-[#CBD5E1]">—</span>}
+                      </td>
+                      <td className="px-5 py-4 text-right font-semibold text-[#0F172A]">
+                        {c ? formatCurrency(c.totalRevenue) : '—'}
+                      </td>
+                      <td className="px-5 py-4">
+                        {c && c.revenueTarget > 0 ? (
+                          <div>
+                            <div className="w-full bg-[#F1F5F9] rounded-full h-1.5">
+                              <div
+                                className={`h-1.5 rounded-full ${pct >= 100 ? 'bg-green-500' : pct >= 75 ? 'bg-blue-500' : pct >= 50 ? 'bg-amber-400' : 'bg-red-400'}`}
+                                style={{ width: `${Math.min(pct, 100)}%` }}
+                              />
+                            </div>
+                            <p className="text-xs text-[#94A3B8] mt-1 text-center">{pct}%</p>
+                          </div>
+                        ) : <span className="text-[#CBD5E1] block text-center">—</span>}
+                      </td>
+                      <td className="px-5 py-4 text-right font-semibold text-green-600">
+                        {c?.commission ? formatCurrency(c.commission) : <span className="text-[#CBD5E1]">—</span>}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </main>
     </div>
   );
 }

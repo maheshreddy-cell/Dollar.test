@@ -3,33 +3,26 @@ import { useEffect, useState } from 'react';
 import { User, Role } from '@/types';
 import { ROLE_LABELS, ROLE_COLORS, ASSIGNABLE_ROLES } from '@/lib/roles';
 import { useSession } from 'next-auth/react';
-
-interface NewUserForm {
-  email: string;
-  name: string;
-  role: Role;
-  managerEmail: string;
-}
+import { UserPlus } from 'lucide-react';
+import TopBar from '@/components/layout/TopBar';
 
 export default function UsersPage() {
   const { data: session } = useSession();
+  const [period] = useState(new Date().toISOString().slice(0, 7));
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState<NewUserForm>({ email: '', name: '', role: 'Associate', managerEmail: '' });
+  const [form, setForm] = useState({ email: '', name: '', role: 'Associate' as Role, managerEmail: '' });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  function loadUsers() {
+  function load() {
     fetch('/api/users').then(r => r.json()).then(data => { setUsers(data); setLoading(false); });
   }
+  useEffect(() => { load(); }, []);
 
-  useEffect(() => { loadUsers(); }, []);
-
-  const assignableRoles = session?.user?.role
-    ? ASSIGNABLE_ROLES[session.user.role as Role]
-    : [];
+  const assignableRoles = ASSIGNABLE_ROLES[session?.user?.role as Role ?? 'Associate'];
 
   async function handleInvite(e: React.FormEvent) {
     e.preventDefault();
@@ -46,7 +39,7 @@ export default function UsersPage() {
       setSuccess(`Invite sent to ${form.email}`);
       setForm({ email: '', name: '', role: 'Associate', managerEmail: '' });
       setShowForm(false);
-      loadUsers();
+      load();
     }
   }
 
@@ -57,148 +50,136 @@ export default function UsersPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: user.email, status: newStatus }),
     });
-    loadUsers();
+    load();
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Users</h2>
-          <p className="text-sm text-gray-500 mt-1">{users.length} users</p>
+    <div className="flex flex-col flex-1 overflow-hidden">
+      <TopBar title="Users" period={period} onPeriodChange={() => {}} />
+      <main className="flex-1 overflow-y-auto p-6">
+        <div className="flex items-end justify-between mb-6">
+          <div>
+            <h2 className="text-2xl font-semibold text-[#0F172A]">Users</h2>
+            <p className="text-sm text-[#64748B] mt-1">{users.length} users</p>
+          </div>
+          <button
+            onClick={() => setShowForm(v => !v)}
+            className="flex items-center gap-2 bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors"
+          >
+            <UserPlus size={15} />
+            Invite User
+          </button>
         </div>
-        <button
-          onClick={() => setShowForm(v => !v)}
-          className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-        >
-          + Invite User
-        </button>
-      </div>
 
-      {success && <p className="mb-4 text-sm text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-2">{success}</p>}
+        {success && <p className="mb-4 text-sm text-green-700 bg-green-50 border border-green-100 rounded-lg px-4 py-2.5">{success}</p>}
 
-      {showForm && (
-        <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
-          <h3 className="font-semibold text-gray-900 mb-4">Invite New User</h3>
-          <form onSubmit={handleInvite} className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-              <input
-                value={form.name}
-                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                required
-                placeholder="Full name"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-              <input
-                type="email"
-                value={form.email}
-                onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-                required
-                placeholder="user@example.com"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-              <select
-                value={form.role}
-                onChange={e => setForm(f => ({ ...f, role: e.target.value as Role }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                {assignableRoles.map(r => (
-                  <option key={r} value={r}>{ROLE_LABELS[r]}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Reporting Manager Email</label>
-              <input
-                type="email"
-                value={form.managerEmail}
-                onChange={e => setForm(f => ({ ...f, managerEmail: e.target.value }))}
-                placeholder={session?.user?.email ?? ''}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            {error && <p className="col-span-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
-            <div className="col-span-2 flex gap-3">
-              <button
-                type="submit"
-                disabled={submitting}
-                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-medium px-5 py-2 rounded-lg text-sm transition-colors"
-              >
-                {submitting ? 'Sending…' : 'Send Invite'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowForm(false)}
-                className="border border-gray-300 text-gray-700 px-5 py-2 rounded-lg text-sm hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+        {showForm && (
+          <div className="bg-white border border-[#E2E8F0] rounded-xl p-6 mb-6">
+            <h3 className="font-semibold text-[#0F172A] mb-5">Invite New User</h3>
+            <form onSubmit={handleInvite} className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-[#374151] mb-1.5">Full Name</label>
+                <input
+                  value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                  required placeholder="Full name"
+                  className="w-full px-3 py-2.5 border border-[#E2E8F0] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[#374151] mb-1.5">Email</label>
+                <input
+                  type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                  required placeholder="user@example.com"
+                  className="w-full px-3 py-2.5 border border-[#E2E8F0] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[#374151] mb-1.5">Role</label>
+                <select
+                  value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value as Role }))}
+                  className="w-full px-3 py-2.5 border border-[#E2E8F0] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2563EB] bg-white"
+                >
+                  {assignableRoles.map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[#374151] mb-1.5">Manager Email</label>
+                <input
+                  type="email" value={form.managerEmail} onChange={e => setForm(f => ({ ...f, managerEmail: e.target.value }))}
+                  placeholder={session?.user?.email ?? '(defaults to you)'}
+                  className="w-full px-3 py-2.5 border border-[#E2E8F0] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                />
+              </div>
+              {error && <p className="col-span-2 text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-4 py-2.5">{error}</p>}
+              <div className="col-span-2 flex gap-3">
+                <button
+                  type="submit" disabled={submitting}
+                  className="bg-[#2563EB] hover:bg-[#1D4ED8] disabled:opacity-50 text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors"
+                >
+                  {submitting ? 'Sending…' : 'Send Invite'}
+                </button>
+                <button
+                  type="button" onClick={() => setShowForm(false)}
+                  className="border border-[#E2E8F0] text-[#475569] px-5 py-2.5 rounded-lg text-sm hover:bg-[#F8FAFC] transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
 
-      {loading ? (
-        <div className="space-y-2">
-          {[1,2,3].map(i => <div key={i} className="bg-white rounded-xl border border-gray-200 p-5 h-16 animate-pulse" />)}
-        </div>
-      ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="text-left px-5 py-3 text-gray-600 font-medium">User</th>
-                <th className="text-left px-5 py-3 text-gray-600 font-medium">Role</th>
-                <th className="text-left px-5 py-3 text-gray-600 font-medium">Manager</th>
-                <th className="text-left px-5 py-3 text-gray-600 font-medium">Status</th>
-                <th className="px-5 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {users.map(u => (
-                <tr key={u.email} className="hover:bg-gray-50">
-                  <td className="px-5 py-4">
-                    <p className="font-medium text-gray-900">{u.name}</p>
-                    <p className="text-xs text-gray-400">{u.email}</p>
-                  </td>
-                  <td className="px-5 py-4">
-                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${ROLE_COLORS[u.role]}`}>
-                      {ROLE_LABELS[u.role]}
-                    </span>
-                  </td>
-                  <td className="px-5 py-4 text-gray-500 text-xs">{u.managerEmail || '—'}</td>
-                  <td className="px-5 py-4">
-                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                      u.status === 'active' ? 'bg-green-100 text-green-700'
-                      : u.status === 'invited' ? 'bg-yellow-100 text-yellow-700'
-                      : 'bg-gray-100 text-gray-500'
-                    }`}>
-                      {u.status}
-                    </span>
-                  </td>
-                  <td className="px-5 py-4 text-right">
-                    {u.status !== 'invited' && (
-                      <button
-                        onClick={() => toggleStatus(u)}
-                        className="text-xs text-gray-500 hover:text-gray-800 underline"
-                      >
-                        {u.status === 'active' ? 'Deactivate' : 'Activate'}
-                      </button>
-                    )}
-                  </td>
+        {loading ? (
+          <div className="bg-white border border-[#E2E8F0] rounded-xl p-6 animate-pulse h-48" />
+        ) : (
+          <div className="bg-white border border-[#E2E8F0] rounded-xl overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
+                  {['User','Role','Manager','Status',''].map(h => (
+                    <th key={h} className={`px-5 py-3 text-[11px] font-semibold tracking-widest uppercase text-[#94A3B8] ${h === '' ? '' : 'text-left'}`}>{h}</th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+              </thead>
+              <tbody className="divide-y divide-[#F1F5F9]">
+                {users.map(u => (
+                  <tr key={u.email} className="hover:bg-[#F8FAFC]">
+                    <td className="px-5 py-4">
+                      <p className="font-semibold text-[#0F172A]">{u.name}</p>
+                      <p className="text-xs text-[#94A3B8]">{u.email}</p>
+                    </td>
+                    <td className="px-5 py-4">
+                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${ROLE_COLORS[u.role]}`}>
+                        {ROLE_LABELS[u.role]}
+                      </span>
+                    </td>
+                    <td className="px-5 py-4 text-xs text-[#64748B]">{u.managerEmail || '—'}</td>
+                    <td className="px-5 py-4">
+                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        u.status === 'active' ? 'bg-green-50 text-green-600'
+                        : u.status === 'invited' ? 'bg-amber-50 text-amber-600'
+                        : 'bg-gray-50 text-gray-400'
+                      }`}>
+                        {u.status}
+                      </span>
+                    </td>
+                    <td className="px-5 py-4 text-right">
+                      {u.status !== 'invited' && (
+                        <button
+                          onClick={() => toggleStatus(u)}
+                          className="text-xs text-[#64748B] hover:text-[#0F172A] underline"
+                        >
+                          {u.status === 'active' ? 'Deactivate' : 'Activate'}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </main>
     </div>
   );
 }

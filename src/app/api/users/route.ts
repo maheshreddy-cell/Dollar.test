@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { getAllUsers, createUser, updateUser, getUserByEmail } from '@/lib/sheets';
-import { sendInviteEmail } from '@/lib/mailer';
+import { sendInviteEmail } from '@/lib/sheets';
 import { canManageUsers, ASSIGNABLE_ROLES } from '@/lib/roles';
 import { User, Role } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
@@ -87,8 +87,7 @@ export async function PATCH(req: NextRequest) {
   if (!email) return NextResponse.json({ error: 'email required' }, { status: 400 });
 
   delete updates.passwordHash; // Never update password hash via this endpoint
-  const updated = await updateUser(email, updates);
-  if (!updated) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+  await updateUser(email, updates);
 
   return NextResponse.json({ success: true });
 }

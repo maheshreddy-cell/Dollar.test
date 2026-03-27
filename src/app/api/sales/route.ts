@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { getAllSales, getSalesForAgent, getSalesForPeriod, getSalesDetails } from '@/lib/sheets';
+import { getAllSales, getSalesForAgent, getSalesForPeriod } from '@/lib/sheets';
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);

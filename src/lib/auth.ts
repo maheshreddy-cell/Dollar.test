@@ -4,6 +4,8 @@ import bcrypt from 'bcryptjs';
 import { getUserByEmail } from './sheets';
 import { Role } from '@/types';
 
+// bcryptjs kept for password compare — hash is stored in the sheet by Apps Script invite flow
+
 declare module 'next-auth' {
   interface Session {
     user: {

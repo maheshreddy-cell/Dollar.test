@@ -84,8 +84,6 @@ export async function PATCH(req: NextRequest) {
     Object.entries(updates).filter(([k]) => allowedUpdates.includes(k))
   );
 
-  const updated = await updateTarget(targetId, filtered);
-  if (!updated) return NextResponse.json({ error: 'Target not found' }, { status: 404 });
-
+  await updateTarget(targetId, filtered);
   return NextResponse.json({ success: true });
 }
