@@ -102,6 +102,7 @@ function runSetup() {
   const results = [];
 
   // Tab definitions: [tabName, [headers...]]
+  // Only 2 tabs are created — SalesDone already exists with your raw data
   const tabs = [
     ['Users', [
       'Email', 'Name', 'Role', 'ManagerEmail',
@@ -110,9 +111,6 @@ function runSetup() {
     ['Targets', [
       'TargetID', 'AssignedTo', 'AssignedBy', 'Period',
       'RevenueTarget', 'IncentiveStructure', 'Notes', 'CreatedAt', 'UpdatedAt'
-    ]],
-    ['SalesDetails', [
-      'DealID', 'AgentEmail', 'ProductType', 'Stage', 'Amount', 'Period', 'CapturedAt'
     ]],
   ];
 
